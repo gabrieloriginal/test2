@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE TEST | Nivel Avanzado</title>
+    <title>THE TEST</title>
     <style>
         :root { 
             --bg: #f8fafc; 
@@ -83,12 +83,11 @@
 
 <div class="container" id="login-box">
     <h1>THE TEST 🚀</h1>
-    <p>Evaluación académica avanzada calificada por Inteligencia Artificial.</p>
     
     <label>Materia a evaluar:</label>
     <select id="topic-select">
-        <option value="divisibilidad">Aritmética | Divisibilidad Avanzada (Lema de Cuya)</option>
-        <option value="estadistica">Estadística | Medidas de Posición (MPNC)</option>
+        <option value="divisibilidad">Aritmética | Divisibilidad</option>
+        <option value="estadistica">Estadística | Medidas de Posición No Central</option>
         <option value="quimica">Química | Nomenclatura Inorgánica (Dos Competencias)</option>
     </select>
 
@@ -107,7 +106,7 @@
     
     <button id="btn-eval" onclick="verifyAnswer()">Verificar Respuesta</button>
     
-    <div id="ai-msg" class="hidden feedback"></div>
+    <div id="system-msg" class="hidden feedback"></div>
     
     <button id="btn-next" class="hidden" onclick="loadQuestion()" style="margin-top:1.5rem; background: #0f172a;">Siguiente Pregunta ➔</button>
 </div>
@@ -119,7 +118,8 @@
 </div>
 
 <script>
-    const ENDPOINT = "https://script.google.com/macros/s/AKfycbwdUrU_rPFAGnsD-BSFxrxR3MuPz5S6OLABKxsavmevWSeu_coT0x_Nb9gsx5JrRiBg/exec";
+    // REEMPLAZAR CON TU URL DE DESPLIEGUE REAL
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycbxDqFi4ncYLkCwTKP6JzpK5AQxjy4HWRhAw255h-O5z03KkeOolUeQ-YRBIsccXTJja/exec";
     
     let dni = "";
     let config = null;
@@ -196,7 +196,7 @@
         document.getElementById('q-text').innerText = config.questions[index].q;
         document.getElementById('ans-input').value = "";
         document.getElementById('ans-input').disabled = false;
-        document.getElementById('ai-msg').classList.add('hidden');
+        document.getElementById('system-msg').classList.add('hidden');
         document.getElementById('btn-eval').classList.remove('hidden');
         document.getElementById('btn-next').classList.add('hidden');
     }
@@ -212,23 +212,30 @@
         const prompt = `Actúa como profesor evaluador. Pregunta: "${config.questions[index].q}". Respuesta alumno: "${ans}". Criterio correcto: "${config.questions[index].exp}". Responde ÚNICAMENTE empezando con "CORRECTA" o "INCORRECTA" y fundamenta brevemente por qué.`;
 
         try {
-            const res = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ action: "evaluate_ai", prompt: prompt }) });
+            const res = await fetch(ENDPOINT, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "process_eval", prompt: prompt }) 
+            });
             const data = await res.json();
-            const aiRes = data.ai_response;
-            const isCorrect = aiRes.toUpperCase().startsWith("CORRECTA");
+            
+            if(data.status === "error") throw new Error(data.message);
+
+            const systemRes = data.system_response;
+            const isCorrect = systemRes.toUpperCase().startsWith("CORRECTA");
             
             scoreRecords.push(isCorrect);
             
-            const msgDiv = document.getElementById('ai-msg');
-            msgDiv.innerText = aiRes;
+            const msgDiv = document.getElementById('system-msg');
+            msgDiv.innerText = systemRes;
             msgDiv.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
             msgDiv.classList.remove('hidden');
             
             document.getElementById('ans-input').disabled = true;
             btn.classList.add('hidden');
             document.getElementById('btn-next').classList.remove('hidden');
+            index++;
         } catch (e) { 
-            alert("Error de red."); 
+            alert("Error: " + e.message); 
             btn.disabled = false;
             btn.innerText = "Verificar Respuesta";
         }
@@ -278,7 +285,16 @@
     }
 
     function sendNote(col, grade) {
-        return fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ action: "update_note", dni: dni, curso: config.sheetName, notaTarget: col, nuevaNota: grade }) }).then(r => r.json());
+        return fetch(ENDPOINT, { 
+            method: 'POST', 
+            body: JSON.stringify({ 
+                action: "update_note", 
+                dni: dni, 
+                curso: config.sheetName, 
+                notaTarget: col, 
+                nuevaNota: grade 
+            }) 
+        }).then(r => r.json());
     }
 </script>
 </body>
