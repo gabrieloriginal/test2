@@ -209,7 +209,7 @@
         btn.disabled = true;
         btn.innerText = "Verificando...";
 
-        const prompt = `Actúa como profesor evaluador. Pregunta: "${config.questions[index].q}". Respuesta alumno: "${ans}". Criterio correcto: "${config.questions[index].exp}". Responde ÚNICAMENTE empezando con "CORRECTA" o "INCORRECTA" y fundamenta brevemente por qué.`;
+        const prompt = `Actúa como profesor evaluador. Pregunta: "${config.questions[index].q}". Respuesta alumno: "${ans}". Criterio correcto: "${config.questions[index].exp}". Responde ÚNICAMENTE empezando con "CORRECTA" o "INCORRECTA" nada mas, nada de porque esta preguntas es correcta o incorrecta`;
 
         try {
             const res = await fetch(ENDPOINT, { 
