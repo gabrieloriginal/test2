@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE TEST | Nivel Avanzado</title>
+    <style>
+        :root { 
+            --bg: #f8fafc; 
+            --primary: #2563eb; 
+            --text: #1e293b; 
+            --border: #cbd5e1;
+            --success: #16a34a;
+            --error: #dc2626;
+        }
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .container { 
+            background: white; 
+            padding: 2.5rem; 
+            border-radius: 16px; 
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); 
+            width: 100%; 
+            max-width: 550px; 
+            text-align: center; 
+        }
+        h1 { margin-bottom: 1.5rem; font-size: 2rem; color: #0f172a; }
+        p { color: #64748b; margin-bottom: 2rem; }
+        label { display: block; text-align: left; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        input, select, textarea { 
+            width: 100%; 
+            padding: 14px; 
+            margin-bottom: 1.5rem; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 1rem; 
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); outline: none; }
+        textarea { height: 130px; resize: vertical; line-height: 1.5; }
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            font-size: 1rem;
+            cursor: pointer; 
+            transition: transform 0.1s, background 0.2s;
+        }
+        button:hover { background: #1d4ed8; }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        .hidden { display: none; }
+        .feedback { 
+            text-align: left; 
+            padding: 1.2rem; 
+            border-radius: 8px; 
+            margin-top: 1.5rem; 
+            font-size: 0.95rem; 
+            border-left: 6px solid; 
+            line-height: 1.6;
+        }
+        .correct { background: #dcfce7; border-color: var(--success); color: #166534; }
+        .incorrect { background: #fee2e2; border-color: var(--error); color: #991b1b; }
+        #q-count { color: var(--primary); font-weight: bold; letter-spacing: 1px; font-size: 0.8rem; margin-bottom: 0.5rem; }
+        .result-item { font-size: 1.1rem; margin: 10px 0; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="login-box">
+    <h1>THE TEST 🚀</h1>
+    <p>Evaluación académica avanzada calificada por Inteligencia Artificial.</p>
+    
+    <label>Materia a evaluar:</label>
+    <select id="topic-select">
+        <option value="divisibilidad">Aritmética | Divisibilidad Avanzada (Lema de Cuya)</option>
+        <option value="estadistica">Estadística | Medidas de Posición (MPNC)</option>
+        <option value="quimica">Química | Nomenclatura Inorgánica (Dos Competencias)</option>
+    </select>
+
+    <label>Identificación (DNI):</label>
+    <input type="text" id="dni-input" placeholder="Ingresa los 8 dígitos" maxlength="8">
+    
+    <button onclick="startQuiz()">Comenzar Evaluación</button>
+</div>
+
+<div class="container hidden" id="quiz-box">
+    <div id="q-count"></div>
+    <h3 id="q-text" style="text-align: left; margin-bottom: 1.5rem; line-height: 1.4;"></h3>
+    
+    <label>Tu respuesta fundamentada:</label>
+    <textarea id="ans-input" placeholder="Escribe tu explicación detallada aquí..."></textarea>
+    
+    <button id="btn-eval" onclick="verifyAnswer()">Verificar Respuesta</button>
+    
+    <div id="ai-msg" class="hidden feedback"></div>
+    
+    <button id="btn-next" class="hidden" onclick="loadQuestion()" style="margin-top:1.5rem; background: #0f172a;">Siguiente Pregunta ➔</button>
+</div>
+
+<div class="container hidden" id="result-box">
+    <h2>Evaluación Finalizada</h2>
+    <div id="res-detail" style="background: #f1f5f9; padding: 25px; border-radius: 12px; margin: 1.5rem 0;"></div>
+    <div id="save-status" style="font-weight: bold; font-size: 0.9rem;"></div>
+</div>
+
+<script>
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycbyV637qv_MH4FXhg5gyWs0s72fEQp_pYWVh-bfKtmvMNGU-7XPIjOenDeSmuNlzjjJg/exec";
+    
+    let dni = "";
+    let config = null;
+    let index = 0;
+    let scoreRecords = [];
+
+    const banks = {
+        divisibilidad: [
+            {q: "Demuestre conceptualmente: si d|a y d|b, ¿por qué d divide a la combinación lineal (ax + by) para cualquier x, y entero?", exp: "Porque d es factor común de a y b. Si a=dk1 y b=dk2, entonces ax+by = d(k1x + k2y), siendo k1x+k2y un entero."},
+            {q: "Explique la condición necesaria para que el cociente de la suma de potencias (a^n + b^n) entre (a + b) sea un valor entero exacto.", exp: "El exponente 'n' debe ser un número impar. Si n es par, el residuo no es cero."},
+            {q: "Demuestre la propiedad de transitividad: si a|b y b|c, entonces a|c.", exp: "Si b=ak y c=bm, sustituyendo b en c tenemos c=(ak)m = a(km). Como km es entero, a divide a c."},
+            {q: "¿Qué implica matemáticamente que dos números sean primos entre sí (coprimos)? Fundamente basándose en divisores.", exp: "Implica que el Máximo Común Divisor (MCD) entre ambos es igual a 1, no compartiendo factores primos comunes."},
+            {q: "Si a|bc y sabemos que el MCD(a, b) = 1, ¿qué concluye el Lema de Euclides sobre el valor 'c'?", exp: "Concluye necesariamente que 'a' debe dividir al valor 'c'."},
+            {q: "Explique por qué si a|b y b|a, entonces los valores absolutos de a y b deben ser iguales.", exp: "Porque b=ak y a=bm, lo que implica a=akm. Entonces km=1. En el conjunto de los enteros, k y m solo pueden ser 1 o -1."},
+            {q: "Bajo el criterio de divisibilidad de potencias, ¿cuándo un número es divisible por la diferencia a^n - b^n?", exp: "Siempre es divisible por (a-b) para cualquier valor de n que pertenezca a los números naturales."},
+            {q: "Si un número d divide a n, ¿divide d a todos los múltiplos de n? Justifique su respuesta.", exp: "Sí, si n=dk, cualquier múltiplo de n es n*m = (dk)m = d(km), por tanto d divide al múltiplo."},
+            {q: "¿Por qué se afirma que el número cero es divisible por cualquier número entero 'a' (siendo a distinto de cero)?", exp: "Porque existe un entero k=0 tal que se cumple la definición 0 = a * 0."},
+            {q: "Si a divide a b (siendo b un número positivo), ¿cuál es la relación de magnitud obligatoria entre ellos?", exp: "El valor absoluto de 'a' debe ser menor o igual al valor absoluto de 'b' (|a| ≤ |b|)."}
+        ],
+        quimica: [
+            {q: "Diferencie un Ozónido de un Óxido común basándose exclusivamente en su estructura aniónica.", exp: "El ozónido contiene el anión complejo (O3)-1, mientras que el óxido común utiliza el anión (O)-2."},
+            {q: "Explique detalladamente cómo se origina un Peroxoácido a partir de la estructura de un oxácido simple.", exp: "Se origina sustituyendo un átomo de oxígeno (-O-) por un grupo peroxo unido por enlace simple (-O-O-)."},
+            {q: "¿Cuál es la característica principal de los Subóxidos en cuanto a sus enlaces químicos y proporción de oxígeno?", exp: "Poseen enlaces metal-metal o cadenas de carbono y una proporción de oxígeno inferior al óxido normal más bajo."},
+            {q: "En el sistema de nomenclatura Stock, ¿qué función cumple exactamente el número romano colocado entre paréntesis?", exp: "Indica el estado de oxidación real del elemento electropositivo cuando posee múltiples valencias."},
+            {q: "Diferencie la nomenclatura de un hidrácido cuando se encuentra en estado gaseoso frente a su estado en disolución acuosa.", exp: "Gaseoso se nombra como 'uro de hidrógeno'; en acuoso usa el prefijo 'Ácido' y el sufijo '-hídrico'."},
+            {q: "Explique el mecanismo de formación de las Sales Haloideas (Sales Binarias) a partir de un hidrácido.", exp: "Se forman mediante la sustitución total de los átomos de hidrógeno de un hidrácido por un metal."},
+            {q: "Describa la composición química de un Superóxido y determine el estado de oxidación aparente del oxígeno en él.", exp: "Es un compuesto binario con el anión (O2)-1; el oxígeno actúa con un estado de oxidación aparente de -1/2."},
+            {q: "¿Qué diferencia fundamental existe entre un ácido Meta-, Piro- y Orto- en términos de su hidratación?", exp: "La diferencia radica en la cantidad de moléculas de agua (1, 2 o 3 respectivamente) añadidas al anhídrido original."},
+            {q: "¿Cuál es la regla de transformación de sufijos para convertir el nombre de un ácido en el nombre de su correspondiente oxisal?", exp: "El sufijo '-oso' del ácido se convierte en '-ito' en la sal, y el sufijo '-ico' se convierte en '-ato'."},
+            {q: "Defina qué es un Calcogenuro y especifique el estado de oxidación con el que actúa el no metal.", exp: "Es una sal binaria derivada de los anfígenos (S, Se, Te) donde el no metal actúa con estado de oxidación -2."}
+        ],
+        estadistica: [
+            {q: "Explique el significado técnico de las variables 'k' y 'n' en la fórmula de posición P = (k*n)/Divisor.", exp: "k representa el número de orden de la medida buscada y n representa el tamaño total de la muestra de datos."},
+            {q: "¿Cuál es el procedimiento inicial obligatorio y crítico antes de aplicar cualquier fórmula de medidas de posición?", exp: "El ordenamiento de los datos de la muestra de forma ascendente (de menor a mayor)."},
+            {q: "Defina matemáticamente qué es un Cuartil y determine en cuántas partes iguales divide a la muestra.", exp: "Es una medida de posición que divide a la muestra en 4 partes iguales, cada una conteniendo el 25% de los datos."},
+            {q: "Si el cálculo de la posición resulta en un valor decimal, ¿cómo se procede para ubicar el dato exacto según la regla?", exp: "Se aplica la regla de redondeo al entero inmediato superior para determinar la ubicación física del dato."},
+            {q: "Diferencie conceptualmente los términos 'Partes' de 'Cortes' en el contexto de la estadística de posición.", exp: "Las partes son los grupos de igual tamaño creados; los cortes son los valores que definen las fronteras (Cortes = Partes - 1)."},
+            {q: "¿Qué interpretación estadística tiene el hecho de que un valor se ubique en el Percentil 70?", exp: "Indica que el 70% de los datos de la muestra son menores o iguales al valor obtenido en esa posición."},
+            {q: "Mencione las características de una escala especial y cite dos ejemplos que no dividan la muestra en partes iguales.", exp: "Son escalas con porcentajes variables. Ejemplos: Estaninos, Esteninos o Escala C."},
+            {q: "¿A qué otras tres medidas de posición equivale exactamente el segundo cuartil (Q2) de una muestra?", exp: "Equivale exactamente a la Mediana, al Decil 5 y al Percentil 50."},
+            {q: "¿En cuántas partes divide un Sextil a la muestra y qué porcentaje de datos representa cada una de esas partes?", exp: "Divide la muestra en 6 partes iguales; cada parte representa aproximadamente el 16.67% de los datos totales."},
+            {q: "Explique la interpretación práctica de un Vigésile 1 (k=1) aplicado a un conjunto de datos.", exp: "Representa que el 5% de la población de datos se encuentra por debajo o es igual al valor hallado en dicha posición."}
+        ]
+    };
+
+    function startQuiz() {
+        dni = document.getElementById('dni-input').value.trim();
+        if(dni.length !== 8 || isNaN(dni)) return alert("DNI no válido.");
+        
+        const topicKey = document.getElementById('topic-select').value;
+        const selectedQuestions = [...banks[topicKey]].sort(() => 0.5 - Math.random()).slice(0, 10);
+        
+        config = { 
+            topic: topicKey, 
+            questions: selectedQuestions,
+            sheetName: topicKey === "quimica" ? "Química" : "Aritmética Algebra",
+            targetCols: topicKey === "divisibilidad" ? ["L"] : (topicKey === "quimica" ? ["O", "V"] : ["AJ"])
+        };
+
+        document.getElementById('login-box').classList.add('hidden');
+        document.getElementById('quiz-box').classList.remove('hidden');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if(index >= 10) return finish();
+        
+        let labelComp = "";
+        if(config.topic === "quimica") {
+            labelComp = index < 5 ? " | COMPETENCIA 1" : " | COMPETENCIA 2";
+        }
+
+        document.getElementById('q-count').innerText = `DESAFÍO ${index + 1} DE 10${labelComp}`;
+        document.getElementById('q-text').innerText = config.questions[index].q;
+        document.getElementById('ans-input').value = "";
+        document.getElementById('ans-input').disabled = false;
+        document.getElementById('ai-msg').classList.add('hidden');
+        document.getElementById('btn-eval').classList.remove('hidden');
+        document.getElementById('btn-next').classList.add('hidden');
+    }
+
+    async function verifyAnswer() {
+        const btn = document.getElementById('btn-eval');
+        const ans = document.getElementById('ans-input').value.trim();
+        if(ans.length < 5) return alert("Fundamenta más tu respuesta.");
+
+        btn.disabled = true;
+        btn.innerText = "Verificando...";
+
+        const prompt = `Actúa como profesor evaluador. Pregunta: "${config.questions[index].q}". Respuesta alumno: "${ans}". Criterio correcto: "${config.questions[index].exp}". Responde ÚNICAMENTE empezando con "CORRECTA" o "INCORRECTA" y fundamenta brevemente por qué.`;
+
+        try {
+            const res = await fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ action: "evaluate_ai", prompt: prompt }) });
+            const data = await res.json();
+            const aiRes = data.ai_response;
+            const isCorrect = aiRes.toUpperCase().startsWith("CORRECTA");
+            
+            scoreRecords.push(isCorrect);
+            
+            const msgDiv = document.getElementById('ai-msg');
+            msgDiv.innerText = aiRes;
+            msgDiv.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+            msgDiv.classList.remove('hidden');
+            
+            document.getElementById('ans-input').disabled = true;
+            btn.classList.add('hidden');
+            document.getElementById('btn-next').classList.remove('hidden');
+        } catch (e) { 
+            alert("Error de red."); 
+            btn.disabled = false;
+            btn.innerText = "Verificar Respuesta";
+        }
+    }
+
+    function getGradeLetter(correctas, total) {
+        let pct = (correctas / total) * 100;
+        if(pct >= 90) return "AD";
+        if(pct >= 70) return "A";
+        if(pct >= 50) return "B";
+        return "C";
+    }
+
+    async function finish() {
+        document.getElementById('quiz-box').classList.add('hidden');
+        document.getElementById('result-box').classList.remove('hidden');
+        
+        let fetches = [];
+        let htmlResults = "";
+
+        if(config.targetCols.length === 1) {
+            let correct = scoreRecords.filter(x => x).length;
+            let grade = getGradeLetter(correct, 10);
+            htmlResults = `<div class="result-item">Aciertos: ${correct}/10</div><div class="result-item" style="font-size:2rem;color:var(--primary)">NOTA: ${grade}</div>`;
+            fetches.push(sendNote(config.targetCols[0], grade));
+        } else {
+            let c1Correct = scoreRecords.slice(0, 5).filter(x => x).length;
+            let c2Correct = scoreRecords.slice(5, 10).filter(x => x).length;
+            let g1 = getGradeLetter(c1Correct, 5);
+            let g2 = getGradeLetter(c2Correct, 5);
+            htmlResults = `
+                <div class="result-item">Comp. 1: ${c1Correct}/5 -> <b>${g1}</b></div>
+                <div class="result-item">Comp. 2: ${c2Correct}/5 -> <b>${g2}</b></div>`;
+            fetches.push(sendNote(config.targetCols[0], g1));
+            fetches.push(sendNote(config.targetCols[1], g2));
+        }
+
+        document.getElementById('res-detail').innerHTML = htmlResults;
+        const statusDiv = document.getElementById('save-status');
+        statusDiv.innerText = "Registrando notas...";
+
+        try {
+            const results = await Promise.all(fetches);
+            if(results.every(r => r.status === "success")) statusDiv.innerHTML = "<span style='color:var(--success)'>✅ Notas guardadas.</span>";
+            else statusDiv.innerHTML = "<span style='color:var(--error)'>❌ Error en registro.</span>";
+        } catch (e) { statusDiv.innerText = "Error de conexión final."; }
+    }
+
+    function sendNote(col, grade) {
+        return fetch(ENDPOINT, { method: 'POST', body: JSON.stringify({ action: "update_note", dni: dni, curso: config.sheetName, notaTarget: col, nuevaNota: grade }) }).then(r => r.json());
+    }
+</script>
+</body>
+</html>
